@@ -26,7 +26,7 @@ from shapely.geometry import Point, Polygon
 from scipy.stats import moment
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
-path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac = af.var_ini()
+
 
 def widthOfGaußian(fwhm):
     return fwhm * np.sqrt(2) / (2 * m.sqrt(2 * np.log(2)))
@@ -670,15 +670,15 @@ def filelistWriter(load,li,lf,index_bool,ind,time_list):
         dfcsv = dfcsv[dfcsv['index'].isin(ind)]
     dfcsv.to_csv(path + "plots/structure/XYcsv/filelist.csv")
     
+path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac, model, rsigma, r_array = af.var_ini()
     
-    
-load = True
+load = False
 esigmas = lin_var[test_var]
 print(esigmas)
 """li = 1 #points in test_list
 lf = li + 1"""
 li = 0 #points in test_list
-lf = 11
+lf = 1
 index_bool = True
 range_max = 1
 ind = np.arange(0,range_max)
@@ -693,82 +693,51 @@ t_jump = 10
 #time_list = np.arange(0,1000,10)
 #time_list = np.append(time_list,np.arange(1000,11000,50))
 #time_list = np.arange(0,10000,100)
-time_list = np.arange(0,900,20)
+time_list = np.arange(0,50,round(1/fps,2))
 #time_list = [350,450,500,600]
 print(time_list)
-#time_list = np.arange(0,1000,50)
-#time_list = np.append(time_list,np.arange(1500,11000,500))
-#time_list = np.array([100,400,750,1060,1350,1700,2000,4000,7000,10000])
-#time_list = np.append(time_list,np.arange(1000,11000,50))
-#print(time_list)
-#time_list = [1440,1506,1542,1604,1640,1728,1830,1928,2082,2190]
-#time_list = time_list[::10]
 
-df,df_list = dataFrameInitilizer(load,li,lf,index_bool,ind,time_list)
+col = ["ID","FR","X","Y","speed_nn","COLOR","ANGLE","r_a"]
 
-df_new = sf.pedReducer(df,-10,10,0.,25,50)
+df,df_list = dataFrameInitilizer(load,li,lf,index_bool,ind,time_list, col)
+df_new = sf.pedReducer(df,-16,16,0.,25,50)
 
 i = 0
 df_i = df[df.i == i]
 #id_list = df_dist[(df_dist.dist > 0.75) & (df_dist.i == i)].id
 
 t = time_list[-1]
-th = 0.88
+th = 0.7
 #[10,50,100,400,1400]
 #time_list = time_list[time_list > 2000]
 #fig, axis = plt.subplots(2,4,figsize=(5 * 4 ,5 * 2))
-for esig in np.unique(df_i.esigma.to_numpy()):
-    plotpath = "texfiles/16_09_2021_videos/testvideo_" + str(af.b_data_name(esig,3))
-    os.system("mkdir " + plotpath)
+df_vel_plot = df[(df.second >= 0) & (df.id < 190) &(df.i == 0) & (abs(df.x) <3) & (df.y < 10)  & (df.esigma == 0.35) & (df[test_str2] == 0.0)]
+time_array_vel = np.sort(np.unique(df_vel_plot.second.to_numpy()))
+#time_array_vel = [10]
+plotpath = pathMaker("exp_results/testvideo_")
+
+def dataFrameToPlot(df_plot,t,ax,title):
+    df_t = df_plot[df_plot.second == t]
+    df_57 = df_t[df_t.Nn != 6]
+    VorRidgesMaker(df_t, ax)
+    shapescatter = ax.scatter(df_t.x,df_t.y,color = "grey",s = 100)
+    sc = ax.scatter(df_57.x,df_57.y,c=df_57.Nn, vmin=3., vmax=9., cmap = cm.get_cmap('PiYG', 5),alpha = 1.,s = 100)
+
     
-    print(plotpath)
+    
+    ax.set_title(title)
 
-    df_esig = df_i[df_i.esigma == esig]
-    print(print("\sigma^2 = ", esig))
-    print(time_list)
-    for t,i in zip(np.unique(df_esig.second.to_numpy()),range(np.array(time_list).shape[0])):
-        df_t = df_esig[df_esig.second == t]
-        df_57 = df_t[df_t.Nn != 6]
-        print(df_t.shape,t)
-        #df_6 = df_t[df_t.Nn == 6]
-        #df_57 = df_t[df_t.Nn != 6]
-        #df_id = df_t[df_t.id.isin(id_list)]
 
-        x = df_t.x.to_numpy()
-        y = df_t.y.to_numpy()
-        x_min = x.min()
-        x_max = x.max()
-        y_min = y.min()
-        y_max = y.max()
+for t_vel,i in zip(time_array_vel,range(np.array(time_array_vel).shape[0])):
+    fig, ax = plt.subplots(1,1,figsize = (10  , 10 * 10/3))
+    df_vel_plot_t = df_vel_plot[df_vel_plot.second == t_vel]
+    dataFrameToPlot(df_vel_plot,t_vel,ax,"Optimal velcity model t = {}".format(t_vel))
+    for x,y,r in zip(df_vel_plot_t.x,df_vel_plot_t.y,df_vel_plot_t.r_a):
+        circle = plt.Circle((x,y),r, fc='blue',ec="red")
+        plt.gca().add_patch(circle)
+    ax.set_xlim([-1.5,1.5])
+    add_wall(2.5,0.7,ax)
 
-        room = [x_min - 0.3, x_max + 0.3, y_min - 0.3, y_max + 0.3]
-        pointframe = addPedFrame([x_min - 0.5, x_max + 0.5, y_min - 0.5, y_max + 0.5])
-        lat = np.vstack((x,y)).T
-        lat = np.vstack([lat,pointframe])
-        vor = Voronoi(lat,qhull_options='Qbb Qc Qx')
-        fig, ax = plt.subplots(1,figsize = (10 * 1., 10 * 10/20))
-
-        VoronoiRidges(vor,ax)
-        b
-        cmap = cm.get_cmap('plasma')
-        shapescatter = ax.scatter(df_t.x,df_t.y,color = "grey")
-        #df_t = df_t[df_t.Bf >= 0.8]
-        shapescatter = ax.scatter(df_t.x,df_t.y,c=df_t.Bf, vmin=0, vmax=1, cmap = cmap,alpha = 1.)
-        #shapescatter = ax.scatter(df_t.x,df_t.y,c=df_t.ShapeFactor, vmin=1.05, vmax=1.3, cmap = cmap,alpha = 1.)
-        #sc = ax.scatter(df_t.x,df_t.y,color="grey")
-
-        #sc = ax.scatter(df_57.x,df_57.y,c=df_57.Nn, vmin=3., vmax=9., cmap = cm.get_cmap('PiYG', 5),alpha = 1.)
-
-        ax.set_xlim([-10,10])
-        add_wall(2.5,50,ax)
-        ax.set_ylim([-1,10])
-        ax.set_title("time = " + str(t) + " s")
-
-        #fig.colorbar(sc, ticks = [4,5,6,7,8], label = "Coordination Number")
-        #fig.colorbar(shapescatter, label = "$\\zeta$")
-
-        fig.savefig(plotpath + "/" + imgName(i) + ".png")
-        #fig.savefig(plotpath + "/" + af.b_data_name(esig,3) + ".png")
-        plt.close()
-        #plt.show()
-        #break
+    ax.set_ylim([0,10])
+    plt.savefig(plotpath + "/" + imgName(i) + ".png")
+    plt.show()

@@ -391,13 +391,23 @@ def var_ini():
     rho_ini = np.array(rho_ini_frame)
 
     b_frame = frame_reader( folder_frame, "b")
+    
+    rsigma_frame = frame_reader( folder_frame, "rsigma")
+    a_frame = frame_reader( folder_frame, "a")
+    d_frame = frame_reader( folder_frame, "d")
+    model = frame_reader(folder_frame, "model")
+    r_frame = frame_reader(folder_frame, "r_i")
+
 
     N_runs = variables['N_runs'][0]
     fps = variables['fps'][0]
     b = np.array(b_frame)
     N_ped = variables['N_ped'][0]
     t_max = variables['t_max'][0]
-
+    rsigma = np.array(rsigma_frame)
+    r_array = np.array(r_frame)
+    a_array = np.array(a_frame)
+    d_array = np.array(d_frame)
     cross_var = np.load(path + "cross_var.npy")
     lin_var = np.load(path + "var.npy", allow_pickle=True)
     print(cross_var)
@@ -413,7 +423,8 @@ def var_ini():
     print("t_max = ", t_max)
     print("mot_frac = ", mot_frac)
 
-    return path,folder_list,N_runs,b,cross_var,folder_frame,test_str,test_var,test_var2, test_str2, lin_var, T, sec_test_var, N_ped, fps,mot_frac
+    return path,folder_list,N_runs,b,cross_var,folder_frame,test_str,test_var,test_var2, test_str2, lin_var, T, sec_test_var, N_ped, fps,mot_frac,model, rsigma, r_array, a_array,d_array
+    
 
 def frame_reader(folder_frame,key):
     var_frame = folder_frame[key]

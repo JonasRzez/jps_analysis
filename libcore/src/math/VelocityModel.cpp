@@ -423,8 +423,10 @@ double VelocityModel::OptimalSpeed(Pedestrian * ped, double spacing) const
 {
     double v0    = ped->GetV0Norm();
     double T     = ped->GetT();
-    double l     = 2 * ped->GetEllipse().GetBmax(); //assume peds are circles with const radius
-    double speed = (spacing - l) / T;
+    //double l     = 2 * ped->GetEllipse().GetBmax(); //assume peds are circles with const radius
+    //double speed = (spacing - l) / T;
+    double speed = (spacing) / T;
+
     speed        = (speed > 0) ? speed : 0;
     speed        = (speed < v0) ? speed : v0;
     //      (1-winkel)*speed;
@@ -441,6 +443,8 @@ VelocityModel::GetSpacing(Pedestrian * ped1, Pedestrian * ped2, Point ei, int pe
     Point dir_nn_j = ped2->GetDirNn();
     Point dir = ped1->GetDir();
     Point dir_j = ped2->GetDir();
+
+    
     double dir_angle_nn;
     if (dir_nn.NormSquare() > 0. && dir_nn_j.NormSquare() > 0.){
         dir_angle_nn = dir_nn.Normalized().ScalarProduct(dir_nn_j.Normalized());
@@ -471,7 +475,8 @@ VelocityModel::GetSpacing(Pedestrian * ped1, Pedestrian * ped2, Point ei, int pe
         }
     }*/
     double Distance = distp12.Norm();
-    double l        = 2 * ped1->GetEllipse().GetBmax();
+    //double l        = 2 * ped1->GetEllipse().GetBmax();
+    double l        = ped1->GetEllipse().GetBmax() + ped2->GetEllipse().GetBmax();
     Point ep12;
     if(Distance >= J_EPS) {
         ep12 = distp12.Normalized();
@@ -492,9 +497,9 @@ VelocityModel::GetSpacing(Pedestrian * ped1, Pedestrian * ped2, Point ei, int pe
     if((condition1 >= 0) && (condition2 <= l / Distance)){
         // return a pair <dist, condition1>. Then take the smallest dist. In case of equality the biggest condition1
         if (abs(dir_angle_nn) > 1.)
-            return std::make_tuple(distp12.Norm(), -5.,ped2->GetID());
+            return std::make_tuple(distp12.Norm() - l, -5.,ped2->GetID());
         else
-            return std::make_tuple(distp12.Norm(), dir_angle_nn, ped2->GetID());
+            return std::make_tuple(distp12.Norm() - l, dir_angle_nn, ped2->GetID());
     }
     else
         return std::make_tuple(FLT_MAX, -2., -3);
@@ -517,7 +522,8 @@ Point VelocityModel::ForceRepPed(Pedestrian * ped1, Pedestrian * ped2, int perio
     double Distance = distp12.Norm();
     Point ep12; // x- and y-coordinate of the normalized vector between p1 and p2
     double R_ij;
-    double l = 2 * ped1->GetEllipse().GetBmax();
+    //double l = 2 * ped1->GetEllipse().GetBmax();
+    double l        = ped1->GetEllipse().GetBmax() + ped2->GetEllipse().GetBmax();
 
     if(Distance >= J_EPS) {
         ep12 = distp12.Normalized();
@@ -550,7 +556,7 @@ Point VelocityModel::ForceRepPed(Pedestrian * ped1, Pedestrian * ped2, int perio
     }
     else K_ij = 0.;
     
-    R_ij  = -_aPed * exp((l - Distance) / _DPed) * K_ij;
+    R_ij  = -_aPed * exp((l - Distance) / _DPed); //* K_ij;
     
     
     

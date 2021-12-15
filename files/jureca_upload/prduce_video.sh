@@ -1,19 +1,19 @@
 python ini_mc_large_i.py
 python mc_l_1.py
-wait
+#wait
 
-cd texfiles/16_09_2021_videos/testvideo_
+#cd exp_results/plots/video_test/
 
-rm *
+#rm *
 
-cd ../../..
+#cd ../../..
 
-python order_plot.py
+python disc_plot.py
 
-cd texfiles/16_09_2021_videos/testvideo_
+#cd exp_results/plots/video_test/
 
 
 
-ffmpeg -f image2 -r 5 -i %03d.png -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -pix_fmt yuv420p  i23_5fps.mp4
+#ffmpeg -f image2 -r 5 -i %03d.png -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" -pix_fmt yuv420p  i23_5fps.mp4
 
-open i23_5fps.mp4
+#open i23_5fps.mp4

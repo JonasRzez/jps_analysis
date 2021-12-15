@@ -300,11 +300,17 @@ Point GCFMModel::ForceRepPed(Pedestrian * ped1, Pedestrian * ped2) const
              .TransformToCartesianCoordinates(E1.GetCenter(), E1.GetCosPhi(), E1.GetSinPhi());
     p2 = Point(E2.GetXp(), 0)
              .TransformToCartesianCoordinates(E2.GetCenter(), E2.GetCosPhi(), E2.GetSinPhi());
-    distp12 = p2 - p1;
+    distp12 = p1 - p2;
     
     //social force model implimantation
     ep12 = distp12.Normalized();
-    double l        = 2 * ped1->GetEllipse().GetBmax();
+    /*std::cout << "delta_v = " << delta_v._x <<" , " << delta_v._y << " vp1 = "<< vp1._x << " , "<< vp1._y<< " vp2 = " << vp2._x << " , " << vp2._y << std::endl;*/
+    /*std::cout<< "delta_v = " << delta_v._x <<" , " << delta_v._y << std::endl;
+    std::cout<< "t12 = " << t12._x <<" , " << t12._y << std::endl;
+    std::cout<< "ep12 = " << ep12._x <<" , " << ep12._y << std::endl;*/
+
+
+    double l        = ped2->GetEllipse().GetBmax() + ped1->GetEllipse().GetBmax();
     double distance = distp12.Norm();
     /*if (vp1.Norm() > 0){
         K_ij = 0.5 * (vp1.ScalarProduct(ep12) + std::abs(vp1.ScalarProduct(ep12)))/vp1.Norm();
@@ -318,14 +324,18 @@ Point GCFMModel::ForceRepPed(Pedestrian * ped1, Pedestrian * ped2) const
     }
     else K_ij = 0.;
     
-    F_rep = ep12 *  -2000 * exp((l - distance)/0.08) * K_ij ;
+    F_rep = ep12 * 2000 * exp((l - distance)/0.02); // * K_ij  ;
     //F_rep = Point(0.0, 0.0);
     if (distance - l < 0){
-        F_rep += ep12 * 240000 * (-l + distance);
-        
+        Point t12 = Point(-ep12._y,ep12._x);
+        Point delta_v = vp2 - vp1;
+
+        F_rep += ep12 * 240000 * (l - distance);
+        F_rep += t12 * 120000 * (l - distance) * delta_v.ScalarProduct(t12);
+     
     }
     //std::cout<< "K_ij = " << K_ij << " vp1_nomr = "<< vp1.Norm() << " vp1 * ep12 = " << vp1.ScalarProduct(ep12) << " abs(vp1*ep12) = "<< std::abs(vp1.ScalarProduct(ep12)) << std::endl;
-    return F_rep;
+    return F_rep ;
     
 }
 
@@ -433,14 +443,15 @@ Point GCFMModel::ForceRepStatPoint(Pedestrian * ped, const Point & p, double l, 
         return Point(0.0, 0.0);*/
     e_ij = dist / d;
     
-    double width        = 2 * ped->GetEllipse().GetBmax();
-    F_rep = e_ij *  -2000 * exp((width - d)/0.08) ;
+    double width        =  ped->GetEllipse().GetBmax();
+    //F_rep = e_ij *  -2000 * exp((width - d)/0.08) ;
+    F_rep = 0;
     //std::cout<< "force strength" << - 0.1 * exp((width - d)/0.08)<<std::endl;
 
     //F_rep = Point(0.0, 0.0);
     if (d - width < 0){
         F_rep += e_ij * 240000 * (-width + d);
-        //std::cout<< "force strengt" << 0.1 * (width - d)<<std::endl;
+        //std::coout<< "force strengt" << 0.1 * (width - d)<<std::endl;
     }
     
     return F_rep;

@@ -184,9 +184,9 @@ def read_subroom_walls(xml_doc):
 # traj_filename = '/Users/tobias/Documents/development/jupedsim/jpscore-issues/426-corner/01-no/corner_traj'
 # geo_filename = '/Users/tobias/Documents/development/jupedsim/jpscore-issues/426-corner/01-no/corner_geo.xml'
 
-file_loc = "/Users/jonas/Documents/phd/c++/jpsgithub/jurecajps/files/jureca_upload/trajectories/ini_lm_N_ped1000_tmax50_size_0_1_fps_25_testvar_esigma/ini_25_0_lm_1000_esigma_0_0_tmax_50_periodic_0_v0_1_34_T_1_0_rho_ini_2_0_Nped_1000_0_motfrac_1_0"
-traj_filename =file_loc + "/new_evac_traj_50_0_0"
-geo_filename = file_loc + "/geo_25_0.xml"
+file_loc = "/Users/jonas/Documents/phd/c++/jpsgithub/jurecajps/files/jureca_upload/trajectories/ini_lm_N_ped3000_tmax1600_size_0_1_fps_1_testvar_esigma/ini_20_0_lm_3000_esigma_-1_0_tmax_1600_periodic_1_v0_1_34_T_1_0_rho_ini_2_0_Nped_3000_0_motfrac_1_0"
+traj_filename =file_loc + "/new_evac_traj_40_0_0"
+geo_filename = file_loc + "/geo_20_0.xml"
 
 fps = 25
 

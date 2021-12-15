@@ -13,13 +13,14 @@ import networkx as nx
 import StructureFunctions as sf
 from itertools import groupby
 
-def dataFrameInitilizer(load,li,lf,index_bool,ind,time_list):
+def dataFrameInitilizer(load,li,lf,index_bool,ind,time_list,col):
     
-    path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac = af.var_ini()
-    af.file_writer(path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var)
+    path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac,model,rsigma,r_array,a_array, d_array = af.var_ini()
 
+    af.file_writer(path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var)
+    
     sl = "/"
-    T_test_list = lin_var[test_var2]
+    test_list = lin_var[test_var2]
     lattice_type = 'jule'
     runs_tested = N_runs
     traj_testvar2 = []
@@ -32,15 +33,20 @@ def dataFrameInitilizer(load,li,lf,index_bool,ind,time_list):
     box= [x_min,x_max,y_min,y_max]
     x_l = []
     y_l = []
-    col = ["ID","FR","X","Y","speed_nn","COLOR","ANGLE"]
+    #col = ["ID","FR","X","Y","speed_nn","COLOR","ANGLE"]
     #col = ["id" ,"frame", "x/cm", "y/cm"]
     sig = 3.
 
-    t2 = T_test_list[-1]
+    t2 = test_list[-1]
 
-    T_test_list = [T_test_list[-1]]
+    #test_list = test_list
     esigmas = lin_var[test_var][li:lf]
     print("esigmas = ", esigmas)
+    print("test_str = {}".format(test_str))
+    print("test_str2 = {}".format(test_str2))
+    print("test_list = ", test_list)
+  
+
 
     blist = 2 * lin_var[test_var]
     filtered = True
@@ -48,9 +54,10 @@ def dataFrameInitilizer(load,li,lf,index_bool,ind,time_list):
     #time_list = np.arange(0,900,1)
     time_list = sorted(np.unique(time_list))
 
-    for T_test in T_test_list:
+    for T_test in test_list:
         bi = li
         loc_list = sf.folderCollector(folder_frame,T_test)
+        print("loc_list = ", loc_list)
         loc_list = loc_list[li:lf]
         for loc_list_runs in loc_list:
             print("<calculating " + test_str + " = " + str(lin_var[test_var][bi]) + ">")
@@ -98,6 +105,6 @@ def dataFrameInitilizer(load,li,lf,index_bool,ind,time_list):
     
     
 
-    df = sf.DataFrameBuilder2(esigmas,T_test_list)
+    df = sf.DataFrameBuilder2(esigmas,test_list)
     
     return df, df_list

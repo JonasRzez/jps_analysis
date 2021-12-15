@@ -13,29 +13,45 @@ import networkx as nx
 import cmath
 from itertools import groupby
 
+import ShapeFactor as shape
+
+from mpl_toolkits.axes_grid.inset_locator import (inset_axes, InsetPosition,mark_inset)
+import AnalFunctions as af
+from persim import plot_diagrams
+import matplotlib.cm as cm
+from scipy.spatial import Voronoi, voronoi_plot_2d
+from shapely.geometry import Point, Polygon
+from scipy.stats import moment
+from matplotlib.collections import LineCollection
+
+
+
 def trajReduce(second,df,fps,dummy):
     df_t = df[df['FR'] == int(second * fps)]
     x = df_t['X'].to_numpy()#/100
     y = df_t['Y'].to_numpy()#/100
     speed_nn = df_t['speed_nn'].to_numpy()
     ids = df_t['ID'].to_numpy()
-    print(ids.shape)
+    r_a = df_t['r_a'].to_numpy()
+    #print(ids.shape)
     if dummy:
         y_add = np.array([-0.1 for i in range(100)])
         x_add = np.linspace(-25,25,100)
         speed_add = np.array([0 for i in range(100)])
         ids_add = np.array([max(ids) + 1000 for i in range(100)])
+        r_add = np.array([r_a.mean() for i in range(100)])
         x = np.append(x,x_add)
         y = np.append(y,y_add)
         speed_nn = np.append(speed_nn,speed_add)
         ids = np.append(ids,ids_add)
-    print(np.array(ids).shape,np.array(x).shape,np.array(y).shape,np.array(speed_nn).shape)
-    XY = pd.DataFrame({'id':ids,'x':x,'y':y,'speed_nn':speed_nn})
+        r_a = np.append(r_a,r_add)
+    print(np.array(ids).shape,np.array(x).shape,np.array(y).shape,np.array(speed_nn).shape,np.array(r_a).shape)
+    XY = pd.DataFrame({'id':ids,'x':x,'y':y,'speed_nn':speed_nn,'r_a':r_a})
     return XY
 
 def orderfetch(second,ni,df,fps,test_str2,T_test,csvname,filtered,box):
     XY = trajReduce(second,df,fps,True)
-    XYLocalAppend(XY,second,test_str2,T_test,filtered,box)
+    XY = XYLocalAppend(XY,second,test_str2,T_test,filtered,box)
     length = XY['x'].shape[0]
     XY['i'] = listMaker(ni,length)
     XY.to_csv(csvname)
@@ -542,10 +558,10 @@ def folderBuilder(path):
     os.system("mkdir " + path + "plots/structure/bond_factor")
     
 def folderCollector(folder_frame,T_test):
-    path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac = af.var_ini()
+    path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac,model, rsigma,r_array,a_array,d_array = af.var_ini()
 
     #folder_frame_frac = folder_frame.loc[folder_frame[test_str2] == T_test]
-    folder_frame_frac = folder_frame.loc[folder_frame[test_str2] == T_test]['ini_folder'].values
+    folder_frame_frac = folder_frame.loc[(folder_frame[test_str2] == T_test)]['ini_folder'].unique()
     b_folder = folder_frame.loc[folder_frame[test_str2] == T_test]['b'].values
     loc_list = [[path + folder + "/" + "new_evac_traj_" + af.b_data_name(2 * bi, 3) + "_" + str(i) + ".txt" for i in
                  range(N_runs)] for folder, bi in zip(folder_frame_frac, b_folder)]
@@ -563,10 +579,124 @@ def delaunayMaker(x,y):
     points = np.vstack((x,y)).T
     tri = Delaunay(points)
     return tri ,points
+    
+    
+def ShapeFactor(lat,room):
+    if lat.shape[0] == 0:
+        print("WARING: lat.shape[0] = 0")
+        return
+    vor = Voronoi(lat,qhull_options='Qbb Qc Qx')
+    vert = vor.regions
+    rig_vert = []
+    poly_room = shape.room_geo(room)
+    centerpoints = []
+    for note,centerpoint,i in zip(vert,vor.points,range(vor.points.shape[0])):
+        if -1 in note:
+            #print(centerpoint)
+            continue
+        rig_vert.append(note)
+        ki = np.where(vor.point_region == i)[0][0]
+        centerpoints.append(vor.points[ki])
+
+    pol_area_list = []
+    pol_perimeter_list = []
+    pol_centroid_x = []
+    pol_centroid_y = []
+    for note in rig_vert:
+        coords = [(vor.vertices[i][0], vor.vertices[i][1]) for i in note]
+        poly = Polygon(coords)
+        if poly.centroid.within(poly_room):
+            pol_area_list.append(poly.area)
+            pol_perimeter_list.append(poly.length)
+            pol_centroid_x.append(poly.centroid.x)
+            pol_centroid_y.append(poly.centroid.y)
+
+    return np.array(pol_perimeter_list) ** 2 / (4 * np.pi * np.array(pol_area_list)),np.array(centerpoints)[:,0],np.array(centerpoints)[:,1], pol_area_list
+
+def addPedFrame(box):
+    Nx = int((box[1] - box[0]) * 10)
+    Ny = int((box[3] - box[2]) * 10)
+    x_frame = np.linspace(box[0],box[1],Nx)
+    x_frame = np.append(x_frame, np.linspace(box[0],box[1],Nx))
+    x_frame = np.append(x_frame, listMaker(box[0],Ny))
+    x_frame = np.append(x_frame, listMaker(box[1],Ny))
+    
+    y_frame = listMaker(box[2],Nx)
+    y_frame = np.append(y_frame,listMaker(box[3],Nx))
+    y_frame = np.append(y_frame,np.linspace(box[2],box[3],Ny) )
+    y_frame = np.append(y_frame,np.linspace(box[2],box[3],Ny))
+    
+    return np.array([np.array([xi, yi]) for xi, yi in zip(x_frame, y_frame)])
+
+def calculateShapeFactor(df):
+    print_warning = False
+    df_list = []
+    error_list = []
+    #import shape
+    shape_factor_array = np.empty(df.shape[0])
+    counter = 0
+    frames = []
+    times_frames = []
+    
+            
+    
+    df = df.sort_values(by = ['x','y'])
+    #print("time_shape = ", df_time.shape)
+    #print(df_time.shape)
+
+    #if df_time.shape[0] > 0:
+    #print(test_var2,test2,test_var, test, "i = ", i, "t = ", t)
+    x_max = df['x'].max()
+    x_min = df['x'].min()
+    y_max = df['y'].max()
+    y_min = df['y'].min()
+    #print(x_min,x_max,y_min,y_max)
+    room = [x_min - 0.3, x_max + 0.3, y_min - 0.3, y_max + 0.3]
+    pointframe = addPedFrame([x_min - 0.5, x_max + 0.5, y_min - 0.5, y_max + 0.5])
+    lat = np.vstack((df['x'].to_numpy(),df['y'].to_numpy())).T
+    lat = np.vstack([lat,pointframe])
+    """vor = Voronoi(lat)
+    fig = voronoi_plot_2d(vor, show_vertices=False, line_colors='orange',
+               line_width=2, line_alpha=0.6, point_size=2)
+    plt.show()"""
+    #print(lat.shape)
+    shapefactor,centroidx,centroidy,pol_area_list = ShapeFactor(lat,room)
+    #print(centroidx.shape,centroidy.shape,shapefactor.shape)
+    new_frame = pd.DataFrame({'x':np.round(centroidx,2),'y':np.round(centroidy,2),"ShapeFactor": shapefactor,"area":pol_area_list})
+    new_frame = new_frame.sort_values(by = ['x','y'])
+    #frames.append(new_frame)
+    #print("unique T = ", np.unique(df_time['T'].to_numpy())," unique esig = ", np.unique(df_time.esigma.to_numpy()))
+    #print(df_time.shape,new_frame.shape)
+    #print(new_frame)
+    #print(df.shape,new_frame.shape)
+    if df.shape[0] != new_frame.shape[0]:
+        print("WARNING: shape mismatch in df_time and newframe")
+        print_warning = True
+        #error_list.append([test,test2,i,t])
+        #continue
+    df['ShapeFactor'] = new_frame['ShapeFactor'].to_numpy()
+    df['dens'] = new_frame['area'].to_numpy()
+    #print(df.head())
+    #df_list.append(df_time)
+    #times_frames.append(df_time)
+    #df_time['ShapeFactor'] = new_frame['ShapeFactor'].to_numpy()
+    #arange = np.arange(counter,counter + shapefactor.shape[0])
+    #np.put(shape_factor_array,arange,new_frame['ShapeFactor'].to_numpy())
+    #counter += new_frame['ShapeFactor'].shape[0]
+    
+    #df = df.sort_values(by = [test_var2,test_var,'i','second','x','y'])
+    if print_warning:
+        print("Error in Values")
+    #df['ShapeFactor'] = shape_factor_array
+    #df = pd.concat(df_list)
+    return df
 
 def XYLocalAppend(XY,second,test_str2,T_test,filtered,box):
     x = XY['x'].values
     y = XY['y'].values
+    #print(XY)
+    
+
     tri,points = delaunayMaker(x,y)
     N = tri.points.shape[0]
     neighbour_list, neigh_dist_list, local_bond_list, mean_neighdist_list = localOrientationMeasures(tri,N,filtered,box)
@@ -577,6 +707,13 @@ def XYLocalAppend(XY,second,test_str2,T_test,filtered,box):
 
     XY[test_str2] = listMaker(T_test,x.shape[0])
     XY['second'] = listMaker(second,x.shape[0])
+        
+    print("CALCULATE SHAPE FACTOR")
+    #print(calculateShapeFactor(XY))
+    XY =  calculateShapeFactor(XY)
+    XY['dens'] = 1/XY['dens'].to_numpy() * (XY['Nn'].to_numpy() * 0.5 + 1) * 0.9
+    print("/CALCULATE SHAPE FACTOR")
+    #print(XY.head())
     #XY_red = pedReducer(XY,x_min,x_max,y_min,y_max,300)
     return XY
 
@@ -586,13 +723,13 @@ def listMaker(value,length):
     return list_
 
 def DataFrameBuilder2(test,test2):
-    path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac = af.var_ini()
+    path, folder_list, N_runs, b, cross_var, folder_frame, test_str, test_var, test_var2, test_str2, lin_var, T_test_list, sec_test_var, N_ped, fps, mot_frac,model,rsigma,r_array,a_array, d_array = af.var_ini()
 
     dfcsv = pd.read_csv(path + "plots/structure/XYcsv/filelist.csv")
     print(dfcsv.head())
     print("test2 = ",test2,"test = ", test)
-    data = dfcsv[dfcsv[test_str2] == test2[0]]
-    data = dfcsv[dfcsv['testvar'] == test[0]]["files"].values
+    #data = dfcsv[dfcsv[test_str2] == test2[0]]
+    data = dfcsv[dfcsv['testvar'] == test[0]]["files"]
     keys = pd.read_csv(data[0]).keys().values[1:]
     appenditures = np.array(["esigma","angle","r"])
     keys = np.append(keys,appenditures)
@@ -602,7 +739,7 @@ def DataFrameBuilder2(test,test2):
     counter = 0
     for testvar2 in test2:
         for esigma in test:
-            data = dfcsv[dfcsv['testvar'] == esigma]["files"].values
+            data = dfcsv[(dfcsv['testvar'] == esigma) & (dfcsv[test_str2] == testvar2)]["files"].values
             #data = data[data['testvar'] in second_list]["files"].values
             for pathname,i in zip(data,range(data.shape[0])):
                 dfread = pd.read_csv(pathname)
